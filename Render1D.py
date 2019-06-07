@@ -118,7 +118,7 @@ def print_var_names(args):
     file_prefix = args["file-prefix"]
     h5files = get_h5_files(file_prefix)
     volfile = h5files[0]["element_data.vol"]
-    Observation_Id_0  = volfile.keys()[0]
+    obs_id_0  = volfile.keys()[0]
     grid_names = volfile[Observation_Id_0].keys()
     grid = volfile[Observation_Id_0][grid_names[0]]
     variables = grid.keys()
@@ -128,50 +128,38 @@ def print_var_names(args):
     return None
 
 
-def get_data(var_name):
+def get_data(args):
     # This probably will need to be changed in order to
     # be consitent with the current format of the .vol files.
     '''
     Get the data to be plotted
     #:return: the array of data, coords, and time
     '''
-    # As above maybe unnecessary
-    data_dirs = glob.glob('File*')
-    data_dirs.sort()
-    abs_path = os.getcwd()
-    for data_dir in data_dirs:
-        os.chdir(abs_path + '/' + data_dir)
-        h5_file_names = glob.glob('*.h5')
-        #for f in h5_file_names:
-        #    print(f)
-        # The following two lines should probably become:
-        # [ h5py.File(file_name, 'r') for file_name in h5_file_names]
-        nfiles = len(h5_file_names)
-        h5files = [h5py.File(h5_file_names[i], 'r') for file_name in h5_file_names]
-        #Maybe arrays instead of lists?
-        local_data = []
-        local_coords = []
-        local_time = 0.0
-        # Similar thing here with list comprehension
-        for i in range(len(h5files)):
-            f = h5files[i]
-            if f.attrs['FileFormatVersion'] != 2:
-                print("Bad SpECTRE file format given, %s" %
-                      f.attrs['FileFormatVersion'])
-                sys.exit(1)
-            #Everythign below here needs to be fixed
-            ##########################################
-            elements = f.keys()
-            for element_name in elements:
-                element = f[element_name]
-                local_time = float(element.attrs['Time'])
-                local_data = np.concatenate((np.asarray(element[var_name][()]),
-                                             np.asarray(local_data)))
-                local_coords = np.asarray(np.concatenate((
-                    element["x-coord"][()], local_coords)))
-        data.append(local_data)
-        coords.append(local_coords)
-        time.append(local_time)
+    file_prefix = args["file-prefix"]
+    var_name = args["var"]
+    h5files = get_h5_files(file_prefix)
+    volfiles =  [h5file['element_data.vol'] for h5file in h5files]
+    # Get a list of times from the first vol file
+    ids_times = [(obs_id,obs_id.attrs['observation_value']) for obs_id in volfiles[0].keys()]
+    ids_times.sort(key = lambda pair: pair[1])
+    time_data = {}
+    for id_and_time in ids_times:
+        time_data[id_and_time] = []
+        for volfile in volfiles:
+            Obs_Id_File  = volfile[id_and_time[0]]
+            local_data = []
+            local_coords = []
+            for grid_name in Obs_Id_File.keys():
+                h5_grid = h5_time[grid_name]
+                local_data += list(h5_grid[var_name])
+                local_coords += list(h5_grid['InertialCoordinates_x']))
+            local_coords_and_data  = zip(local_coords, local_data)
+            time_data[id_and_time] += local_coords_and_data
+        time_data[id_and_time].sort(key = lambda pair: pair[0])
+        time.append(time)
+        coords.append([pair[0] for pair in time_data[id_and_time]])
+        data.append([pair[1] for pair in time_data[id_and_time]])
+
     return None
 
 
@@ -246,7 +234,7 @@ def main(args):
         print_var_names(args)
         sys.exit(0)
 
-    get_data(args['var'])
+    get_data(args)
     if args['time']:
         render_single_time(args)
     else:
