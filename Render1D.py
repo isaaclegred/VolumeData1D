@@ -74,6 +74,10 @@ def parse_cmd_line():
     parser = argparse.ArgumentParser(description='Render 1-dimensional data',
                                      formatter_class=
                                      argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--file-prefix', type=str, required=True,
+                        help='common prefix of all h5 files being used \
+                        in the case of a single h5 file, it is the file name \
+                        without the .h5 extension')
     parser.add_argument('--var', type=str, required=True,
                         help='name of variable to render. eg \'psi\', \
                         \'psi-Error\' or \'psi-Analytic\'')
@@ -94,36 +98,32 @@ def parse_cmd_line():
                         and exit (optional)')
     return vars(parser.parse_args())
 
-def find_h5_files(file_prefix):
+def get_h5_files(file_prefix):
     '''
     Get a list of the h5 files containing the data
     :return list of h5 files containing volume data
     '''
-    #TODO
+    h5_file_names = glob.glob("*.h5")
+    h5_files = [h5py.File(file_name, 'r')
+                   for file_name in h5_file_names]
+    return(h5_files)
 
-def print_var_names():
+def print_var_names(args):
     # This will need to be changed to be consistent with .vol files.
     '''
     Print all available variables to screen
     :param args:
     :return: None
     '''
-    # The following three lines are possibly unnecesrary
-    ############################################
-    data_dirs = glob.glob('File*')
-    abs_path = os.getcwd()
-    os.chdir(abs_path + '/' + data_dirs[0])
-    ############################################
-    # Process the available H5 files, should probably be factored out
-    ############################################
-    h5_file_names = glob.glob('*.h5')
-    h5files = [h5py.File(h5_file_names[i], 'r')
-               for i in range(len(h5_file_names))]
-    elements = h5files[0].keys()
-    variables = h5files[0][elements[0]].keys()
+    file_prefix = args["file-prefix"]
+    h5files = get_h5_files(file_prefix)
+    volfile = h5files[0]["element_data.vol"]
+    Observation_Id_0  = volfile.keys()[0]
+    grid_names = volfile[Observation_Id_0].keys()
+    grid = volfile[Observation_Id_0][grid_names[0]]
+    variables = grid.keys()
     variables.remove("connectivity")
     variables.remove("x-coord")
-    #############################################
     print("Variables in H5 file:\n[%s]" % ', '.join(map(str, variables)))
     return None
 
@@ -243,7 +243,7 @@ def main(args):
     '''
 
     if args['list_vars']:
-        print_var_names()
+        print_var_names(args)
         sys.exit(0)
 
     get_data(args['var'])
