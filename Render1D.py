@@ -147,7 +147,7 @@ def get_data(var_name):
         # The following two lines should probably become:
         # [ h5py.File(file_name, 'r') for file_name in h5_file_names]
         nfiles = len(h5_file_names)
-        h5files = [h5py.File(h5_file_names[i], 'r') for i in range(nfiles)]
+        h5files = [h5py.File(h5_file_names[i], 'r') for file_name in h5_file_names]
         #Maybe arrays instead of lists?
         local_data = []
         local_coords = []
