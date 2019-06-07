@@ -94,6 +94,12 @@ def parse_cmd_line():
                         and exit (optional)')
     return vars(parser.parse_args())
 
+def find_h5_files(file_prefix):
+    '''
+    Get a list of the h5 files containing the data
+    :return list of h5 files containing volume data
+    '''
+    #TODO
 
 def print_var_names():
     # This will need to be changed to be consistent with .vol files.
