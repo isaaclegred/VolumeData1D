@@ -1,4 +1,4 @@
-# Distribute≈çd under the MIT License.
+# Distributed under the MIT License.
 # See LICENSE.txt for details.
 #!/usr/bin/env python
 #Python script to render 1D data written using SpECTRE in format v2
@@ -15,6 +15,8 @@ import argparse
 import sys
 import os # Gives the script additional functionality but may be unnesecary
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 try:
@@ -103,7 +105,7 @@ def get_h5_files(file_prefix):
     Get a list of the h5 files containing the data
     :return list of h5 files containing volume data
     '''
-    h5_file_names = glob.glob("*.h5")
+    h5_file_names = glob.glob(file_prefix + "*.h5")
     h5_files = [h5py.File(file_name, 'r')
                    for file_name in h5_file_names]
     return(h5_files)
@@ -115,7 +117,7 @@ def print_var_names(args):
     :param args:
     :return: None
     '''
-    file_prefix = args["file-prefix"]
+    file_prefix = args["file_prefix"]
     h5files = get_h5_files(file_prefix)
     volfile = h5files[0]["element_data.vol"]
     obs_id_0  = volfile.keys()[0]
@@ -125,6 +127,9 @@ def print_var_names(args):
     variables.remove("connectivity")
     variables.remove("x-coord")
     print("Variables in H5 file:\n[%s]" % ', '.join(map(str, variables)))
+    for h5_file in h5files:
+        h5_file.close()
+
     return None
 
 
@@ -135,12 +140,13 @@ def get_data(args):
     Get the data to be plotted
     #:return: the array of data, coords, and time
     '''
-    file_prefix = args["file-prefix"]
+    file_prefix = args["file_prefix"]
     var_name = args["var"]
     h5files = get_h5_files(file_prefix)
     volfiles =  [h5file['element_data.vol'] for h5file in h5files]
     # Get a list of times from the first vol file
-    ids_times = [(obs_id,obs_id.attrs['observation_value']) for obs_id in volfiles[0].keys()]
+    ids_times = [(obs_id,volfiles[0][obs_id].attrs['observation_value']) for
+                 obs_id in volfiles[0].keys()]
     ids_times.sort(key = lambda pair: pair[1])
     time_data = {}
     for id_and_time in ids_times:
@@ -150,16 +156,17 @@ def get_data(args):
             local_data = []
             local_coords = []
             for grid_name in Obs_Id_File.keys():
-                h5_grid = h5_time[grid_name]
+                h5_grid = Obs_Id_File[grid_name]
                 local_data += list(h5_grid[var_name])
-                local_coords += list(h5_grid['InertialCoordinates_x']))
+                local_coords += list(h5_grid['InertialCoordinates_x'])
             local_coords_and_data  = zip(local_coords, local_data)
             time_data[id_and_time] += local_coords_and_data
         time_data[id_and_time].sort(key = lambda pair: pair[0])
-        time.append(time)
+        time.append(id_and_time[1])
         coords.append([pair[0] for pair in time_data[id_and_time]])
         data.append([pair[1] for pair in time_data[id_and_time]])
-
+    for h5file in h5files:
+        h5file.close()
     return None
 
 
@@ -212,10 +219,10 @@ def render_animation(args):
         myfps = 30
         if args['fps']:
             myfps = int(args['fps'])
-        print("Writing animation to file %s.mp4 at %d frames per second" %
+        print("Writing animation to file %s.mpg at %d frames per second" %
               (args['save'], myfps))
-        anim.save("%s.mp4" % args['save'], fps=myfps,
-                  extra_args=['-vcodec', 'libx264'])
+        anim.save(args['save'] + ".mpg" , writer='ffmpeg', codec = 'mpeg2video')
+        #anim.save("%s.mp4" % args['save'], writer = "ffmpeg")
     else:
         def propagate_exceptions(self, exc, val, tb):
             raise exc(val).with_traceback(tb)
